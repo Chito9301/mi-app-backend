@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",                          // Código JS emitido compatible con ES2020
+    "module": "CommonJS",                        // Sistema de módulos usado en Node.js
+    "rootDir": ".",                             // Carpeta raíz del backend para archivos TS
+    "outDir": "dist",                           // Carpeta de salida para JS compilado
+    "strict": true,                             // Habilita todas las comprobaciones estrictas
+    "esModuleInterop": true,                    // Interoperabilidad ES Modules con CommonJS
+    "skipLibCheck": true,                       // Ignora chequeo de tipos en librerías
+    "forceConsistentCasingInFileNames": true,  // Forzar consistencia en mayúsculas/minúsculas
+    "types": ["node", "express"],               // Tipos globales usados en el proyecto
+    "resolveJsonModule": true,                   // Permite importar archivos JSON
+    "noImplicitAny": true,                       // Previene variables con tipo implícito any
+    "noUnusedLocals": true,                      // Previene variables locales no usadas
+    "noUnusedParameters": true                   // Previene parámetros de función no usados
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
+

@@ -1,8 +1,10 @@
-import jwt from "jsonwebtoken";
+import * as jwt from "jsonwebtoken";
 import type { IncomingHttpHeaders } from "http";
 
-const SECRET = process.env.JWT_SECRET as string;
+const SECRET: jwt.Secret = process.env.JWT_SECRET as jwt.Secret;
 if (!SECRET) throw new Error("Missing JWT_SECRET");
+
+const DEFAULT_EXPIRES_IN = "7d" as const;
 
 export interface JwtPayload {
   sub: string;
@@ -11,8 +13,14 @@ export interface JwtPayload {
   exp?: number;
 }
 
-export function signJwt(payload: Omit<JwtPayload, "iat" | "exp">, expiresIn = "7d") {
-  return jwt.sign(payload, SECRET, { expiresIn });
+export function signJwt(
+  payload: Omit<JwtPayload, "iat" | "exp">,
+  expiresIn: string | number = DEFAULT_EXPIRES_IN
+) {
+  const options: jwt.SignOptions = {
+    expiresIn: expiresIn as jwt.SignOptions["expiresIn"],
+  };
+  return jwt.sign(payload, SECRET, options);
 }
 
 export function verifyJwt(token: string): JwtPayload {
@@ -26,3 +34,4 @@ export function getBearer(headers: IncomingHttpHeaders) {
   if (scheme?.toLowerCase() !== "bearer" || !token) return null;
   return token;
 }
+

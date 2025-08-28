@@ -4,24 +4,37 @@ import { dbConnect } from "../../lib/db";
 import Media from "../../models/Media";
 import { requireAuth } from "../_authGuard";
 import { cloudinary } from "../../lib/cloudinary";
-import formidable from "formidable";
+import formidable, { Fields, Files } from "formidable";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   await dbConnect();
+
   if (req.method === "GET") {
     const items = await Media.find().sort({ createdAt: -1 }).lean();
     return sendJSON(res, 200, { items });
   }
+
   if (req.method === "POST") {
     const auth = requireAuth(req, res);
     if (!auth) return;
 
     const form = formidable({ multiples: false, keepExtensions: true, maxFileSize: 1024 * 1024 * 50 }); // 50MB
-    form.parse(req, async (err, fields, files) => {
+
+    form.parse(req, async (err: any, fields: Fields, files: Files) => {
       if (err) return sendJSON(res, 400, { error: "Formulario inválido" });
 
-      const upload_preset = (fields.upload_preset as string) || process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-      const resource_type = (fields.resource_type as string) || "auto"; // image | video | raw
+      const upload_preset = Array.isArray(fields.upload_preset)
+        ? fields.upload_preset[0]
+        : fields.upload_preset ?? process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? "";
+
+      const resource_type_candidate = Array.isArray(fields.resource_type)
+        ? fields.resource_type[0]
+        : fields.resource_type ?? "auto";
+
+      const valid_resource_types = ["raw", "auto", "image", "video"] as const;
+      const resource_type = valid_resource_types.includes(resource_type_candidate as any)
+        ? (resource_type_candidate as typeof valid_resource_types[number])
+        : "auto";
 
       // 1) Multipart file
       const file = (files.file || files.upload || files.image || files.media) as any;
@@ -64,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             createdBy: auth.userId
           });
           return sendJSON(res, 201, { item: doc, upload: result });
-        } catch (e:any) {
+        } catch (e: any) {
           return sendJSON(res, 500, { error: e.message || "Error al subir desde URL" });
         }
       }
@@ -92,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           );
           const { Readable } = await import("stream");
           Readable.from(buffer).pipe(stream);
-        } catch (e:any) {
+        } catch (e: any) {
           return sendJSON(res, 500, { error: e.message || "Error al subir base64" });
         }
         return;
@@ -102,5 +115,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     return;
   }
-  return methodGuard(req, res, ["GET","POST"]);
+  return methodGuard(req, res, ["GET", "POST"]);
 }

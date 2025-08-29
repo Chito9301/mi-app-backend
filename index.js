@@ -1,53 +1,53 @@
-// index.js
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
-const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+// Carga variables de entorno
+import 'dotenv/config';
 
-const Media = require('./models/Media');
-const User = require('./models/User');
+import express from 'express';
+import mongoose from 'mongoose';
+import multer from 'multer';
+import cloudinary from 'cloudinary';
+import cors from 'cors';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
+import User from './models/User.js';
+import Media from './models/Media.js';
+
+// =======================
+// Configuración CORS
+// =======================
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://tu-frontend.vercel.app',
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) callback(null, true);
+    else callback(new Error(`CORS: El origen ${origin} no está permitido.`));
+  },
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
+// =======================
+// Crear servidor Express
+// =======================
 const app = express();
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // =======================
-// Configuración Cloudinary
-// =======================
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-// =======================
-// Conexión MongoDB
-// =======================
-mongoose.connect(process.env.MONGODB_URI);
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'MongoDB connection error:'));
-db.once('open', () => console.log('Conectado a MongoDB correctamente'));
-
-// =======================
-// Multer para archivos
-// =======================
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-// =======================
-// JWT Middleware
+// Middleware autenticación JWT
 // =======================
 function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Token requerido' });
 
-  jwt.verify(token, process.env.JWT_SECRET || 'secretkey', (err, user) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) return res.status(403).json({ error: 'Token inválido' });
     req.user = user;
     next();
@@ -55,184 +55,143 @@ function authMiddleware(req, res, next) {
 }
 
 // =======================
-// Funciones para gráficas
+// Dashboard / test server
 // =======================
-const width = 600;
-const height = 300;
-const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height });
-
-async function generateChart(labels, data, label, type = 'line', color = 'blue') {
-  const config = {
-    type,
-    data: {
-      labels,
-      datasets: [
-        {
-          label,
-          data,
-          borderColor: color,
-          backgroundColor: type === 'line' ? 'rgba(59,130,246,0.2)' : color,
-        },
-      ],
-    },
-    options: { responsive: true, plugins: { legend: { display: true } } },
-  };
-  return chartJSNodeCanvas.renderToDataURL(config);
-}
-
-async function generateUserChart() {
-  const labels = ['6 días', '5 días', '4 días', '3 días', '2 días', 'Ayer', 'Hoy'];
-  const data = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const count = await User.countDocuments({
-      createdAt: { $gte: new Date(date.setHours(0,0,0)), $lt: new Date(date.setHours(23,59,59)) }
-    });
-    data.push(count);
-  }
-  return generateChart(labels, data, 'Usuarios registrados');
-}
-
-async function generateMediaChart() {
-  const labels = ['6 días', '5 días', '4 días', '3 días', '2 días', 'Ayer', 'Hoy'];
-  const data = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const count = await Media.countDocuments({
-      createdAt: { $gte: new Date(date.setHours(0,0,0)), $lt: new Date(date.setHours(23,59,59)) }
-    });
-    data.push(count);
-  }
-  return generateChart(labels, data, 'Archivos subidos', 'bar', 'orange');
-}
-
-// =======================
-// Endpoint JSON para datos dinámicos
-// =======================
-app.get('/api/status', async (req, res) => {
-  let mongoStatus = 'Desconectada ❌';
-  let cloudStatus = 'Desconectado ❌';
-  let userCount = 0;
-  let mediaCount = 0;
-
+app.get('/', async (req, res) => {
   try {
-    mongoStatus = mongoose.connection.readyState === 1 ? 'Conectada ✅' : 'No conectada ❌';
-    userCount = await User.countDocuments();
-    mediaCount = await Media.countDocuments();
-  } catch (err) {
-    mongoStatus = 'Error ❌';
-  }
+    const mongoStatus = mongoose.connection.readyState === 1 ? 'Conectada ✅' : 'Desconectada ❌';
+    const cloudStatus = cloudinary.v2.config().cloud_name ? 'Conectado ✅' : 'Desconectado ❌';
 
-  try {
-    await cloudinary.api.resources({ max_results: 1 });
-    cloudStatus = 'Conectado ✅';
-  } catch (err) {
-    cloudStatus = 'Error ❌';
-  }
+    const userCount = await User.countDocuments();
+    const mediaCount = await Media.countDocuments();
 
-  res.json({
-    mongoStatus,
-    cloudStatus,
-    frontendUrl: process.env.NEXT_PUBLIC_API_URL || 'No configurado',
-    userCount,
-    mediaCount,
-    lastDeployment: new Date().toLocaleString(),
-  });
+    res.send(`
+      <h1>Dashboard Backend</h1>
+      <p>MongoDB: ${mongoStatus}</p>
+      <p>Cloudinary: ${cloudStatus}</p>
+      <p>Frontend URL: ${process.env.NEXT_PUBLIC_API_URL}</p>
+      <p>Usuarios: ${userCount}</p>
+      <p>Medias: ${mediaCount}</p>
+    `);
+  } catch (err) {
+    res.status(500).send('Error cargando dashboard');
+  }
 });
 
 // =======================
-// Dashboard moderno HTML
+// Conexión MongoDB
 // =======================
-app.get('/', async (req, res) => {
-  const userChartUrl = await generateUserChart();
-  const mediaChartUrl = await generateMediaChart();
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ Conectado a MongoDB'))
+  .catch((err) => console.error('❌ Error MongoDB:', err));
 
-  const html = `
-  <!DOCTYPE html>
-  <html lang="es">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Backend Moderno</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.17/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons"></script>
-  </head>
-  <body class="bg-gray-100">
-    <div class="max-w-7xl mx-auto p-6">
-      <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">🚀 Dashboard Interactivo Backend</h1>
+// =======================
+// Configurar Cloudinary
+// =======================
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div class="bg-white rounded-xl p-4 shadow hover:shadow-lg transition duration-300">
-          <h2 class="text-xl font-semibold mb-2">MongoDB</h2>
-          <p id="mongoStatus" class="text-red-600 font-bold">Cargando...</p>
-        </div>
-        <div class="bg-white rounded-xl p-4 shadow hover:shadow-lg transition duration-300">
-          <h2 class="text-xl font-semibold mb-2">Cloudinary</h2>
-          <p id="cloudStatus" class="text-red-600 font-bold">Cargando...</p>
-        </div>
-        <div class="bg-white rounded-xl p-4 shadow hover:shadow-lg transition duration-300">
-          <h2 class="text-xl font-semibold mb-2">Frontend</h2>
-          <p id="frontendUrl" class="text-blue-600 font-bold">Cargando...</p>
-        </div>
-        <div class="bg-white rounded-xl p-4 shadow hover:shadow-lg transition duration-300">
-          <h2 class="text-xl font-semibold mb-2">Estadísticas Totales</h2>
-          <p>Usuarios: <span id="userCount" class="font-bold">0</span></p>
-          <p>Archivos: <span id="mediaCount" class="font-bold">0</span></p>
-        </div>
-      </div>
+// =======================
+// Configurar multer
+// =======================
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white rounded-xl p-4 shadow hover:shadow-lg transition duration-300 text-center">
-          <h3 class="text-lg font-semibold mb-2">Usuarios últimos 7 días</h3>
-          <img src="${userChartUrl}" alt="Usuarios últimos 7 días" class="mx-auto"/>
-        </div>
-        <div class="bg-white rounded-xl p-4 shadow hover:shadow-lg transition duration-300 text-center">
-          <h3 class="text-lg font-semibold mb-2">Archivos últimos 7 días</h3>
-          <img src="${mediaChartUrl}" alt="Archivos últimos 7 días" class="mx-auto"/>
-        </div>
-      </div>
+// =======================
+// Rutas Auth
+// =======================
 
-      <p class="text-center text-gray-500 mt-6">Último despliegue: <span id="lastDeployment">Cargando...</span></p>
-      <p class="text-center text-gray-400 text-sm mt-2">Backend version 1.0.0</p>
-    </div>
+// Registro
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    if (!username || !email || !password) return res.status(400).json({ error: 'Todos los campos son requeridos' });
 
-    <script>
-      async function updateStatus() {
-        try {
-          const res = await fetch('/api/status');
-          const data = await res.json();
+    const userExists = await User.findOne({ $or: [{ username }, { email }] });
+    if (userExists) return res.status(400).json({ error: 'Usuario o email ya existe' });
 
-          document.getElementById('mongoStatus').textContent = data.mongoStatus;
-          document.getElementById('mongoStatus').className = data.mongoStatus.includes('✅') ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ username, email, password: hashedPassword });
+    await user.save();
 
-          document.getElementById('cloudStatus').textContent = data.cloudStatus;
-          document.getElementById('cloudStatus').className = data.cloudStatus.includes('✅') ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
+    res.status(201).json({ message: 'Usuario registrado correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-          document.getElementById('frontendUrl').textContent = data.frontendUrl;
+// Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Todos los campos son requeridos' });
 
-          document.getElementById('userCount').textContent = data.userCount;
-          document.getElementById('mediaCount').textContent = data.mediaCount;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: 'Usuario no encontrado' });
 
-          document.getElementById('lastDeployment').textContent = data.lastDeployment;
-        } catch (err) {
-          console.error('Error actualizando status:', err);
-        }
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(400).json({ error: 'Contraseña incorrecta' });
+
+    const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =======================
+// Rutas Media
+// =======================
+
+app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) => {
+  try {
+    const { title, description, hashtags, type } = req.body;
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const username = req.user.username;
+
+    const uploadStream = cloudinary.v2.uploader.upload_stream(
+      {
+        folder: `${username || 'anonymous'}/${type || 'media'}`,
+        upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET,
+        resource_type: 'auto',
+        context: { title, description, hashtags }
+      },
+      async (error, result) => {
+        if (error) return res.status(500).json({ error: error.message });
+
+        const media = new Media({
+          title,
+          description,
+          hashtags: hashtags ? hashtags.split(',').map(h => h.trim()) : [],
+          type,
+          username,
+          mediaUrl: result.secure_url,
+          publicId: result.public_id,
+          createdBy: req.user.id,
+          createdAt: new Date(),
+          views: 0,
+          likes: 0,
+          comments: 0
+        });
+
+        await media.save();
+        res.json(media);
       }
-      setInterval(updateStatus, 10000);
-      updateStatus();
-    </script>
-    <script>feather.replace()</script>
-  </body>
-  </html>
-  `;
+    );
 
-  res.send(html);
+    uploadStream.end(file.buffer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // =======================
 // Iniciar servidor
 // =======================
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`Backend corriendo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Backend corriendo en puerto ${PORT}`));

@@ -14,12 +14,14 @@
     "chart.js": "^4.5.0",
     "chartjs-node-canvas": "^5.0.0",
     "cloudinary": "^2.7.0",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "esbuild": "^0.25.9",
     "express": "^5.1.0",
     "formidable": "^3.5.4",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.18.0",
+    "multer": "^2.0.2",
     "path-to-regexp": "^8.2.0"
   },
   "devDependencies": {

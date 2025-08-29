@@ -1,8 +1,10 @@
+// controllers/userControllers.js
+
 const User = require('../models/User'); // Modelo de usuario
 const bcrypt = require('bcryptjs'); // Para encriptar contraseñas
 const jwt = require('jsonwebtoken'); // Para generar tokens
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey"; // 🔑 cambia esto en producción
+const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey"; // 🔑 cambiar en producción
 
 /**
  * Obtiene la lista de usuarios con campos seleccionados.
@@ -48,10 +50,10 @@ async function registerUser(req, res) {
       return res.status(400).json({ error: "Todos los campos son requeridos" });
     }
 
-    // Verificar si el usuario ya existe
-    const existingUser = await User.findOne({ email });
+    // Verificar si el usuario ya existe por username o email
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
-      return res.status(400).json({ error: "El email ya está registrado" });
+      return res.status(400).json({ error: "Usuario o email ya registrado" });
     }
 
     // Hashear la contraseña
@@ -66,7 +68,22 @@ async function registerUser(req, res) {
 
     await newUser.save();
 
-    return res.status(201).json({ message: "Usuario registrado correctamente" });
+    // Generar token JWT al registrar
+    const token = jwt.sign(
+      { id: newUser._id, username: newUser.username },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.status(201).json({
+      message: "Usuario registrado correctamente",
+      token,
+      user: {
+        id: newUser._id,
+        username: newUser.username,
+        email: newUser.email
+      }
+    });
   } catch (error) {
     console.error("Error registrando usuario:", error);
     return res.status(500).json({ error: "Error registrando usuario" });
@@ -99,7 +116,7 @@ async function loginUser(req, res) {
 
     // Generar token JWT
     const token = jwt.sign(
-      { id: user._id, email: user.email },
+      { id: user._id, username: user.username },
       JWT_SECRET,
       { expiresIn: "7d" }
     );

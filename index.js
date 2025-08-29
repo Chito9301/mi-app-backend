@@ -17,13 +17,13 @@ import Media from './models/Media.js';
 // =======================
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://tu-frontend.vercel.app',
+  'https://mi-app-frontend.vercel.app', // 👈 cambia este al dominio real de tu frontend
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) callback(null, true);
+    if (allowedOrigins.includes(origin)) callback(null, true);
     else callback(new Error(`CORS: El origen ${origin} no está permitido.`));
   },
   optionsSuccessStatus: 200,
@@ -69,7 +69,6 @@ app.get('/', async (req, res) => {
       <h1>Dashboard Backend</h1>
       <p>MongoDB: ${mongoStatus}</p>
       <p>Cloudinary: ${cloudStatus}</p>
-      <p>Frontend URL: ${process.env.NEXT_PUBLIC_API_URL}</p>
       <p>Usuarios: ${userCount}</p>
       <p>Medias: ${mediaCount}</p>
     `);
@@ -145,7 +144,6 @@ app.post('/api/auth/login', async (req, res) => {
 // =======================
 // Rutas Media
 // =======================
-
 app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) => {
   try {
     const { title, description, hashtags, type } = req.body;

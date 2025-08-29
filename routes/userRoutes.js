@@ -1,13 +1,13 @@
-const express = require('express');
+// routes/userRoutes.js
+import express from "express";
+import { getAllUsers, getUserById } from "../controllers/userController.js";
+
 const router = express.Router();
-const userController = require('../controllers/userController'); // Ajusta ruta
 
-// Rutas de usuarios
-router.get('/users', userController.getAllUsers);
-router.get('/users/:id', userController.getUserById);
+// Obtener todos los usuarios
+router.get("/", getAllUsers);
 
-// 🚀 Rutas de autenticación
-router.post('/auth/signup', userController.registerUser);
-router.post('/auth/login', userController.loginUser);
+// Obtener usuario por ID
+router.get("/:id", getUserById);
 
-module.exports = router;
+export default router;

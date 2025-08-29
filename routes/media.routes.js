@@ -1,12 +1,12 @@
-const express = require("express");
+// routes/mediaRoutes.js
+import express from "express";
+import Media from "../models/Media.js";
+
 const router = express.Router();
 
-// Importar modelo Media (usa mayúscula M según convención)
-const Media = require("../models/Media");
-
 /**
- * POST /media/register
- * Registra un nuevo medio en la base de datos con metadata recibida.
+ * POST /api/media/register
+ * Registrar un nuevo medio
  */
 router.post("/register", async (req, res) => {
   try {
@@ -23,16 +23,14 @@ router.post("/register", async (req, res) => {
       challengeTitle,
     } = req.body;
 
-    // Validaciones básicas
     if (!url || !userId || !title || !type) {
       return res.status(400).json({
         error: "Faltan campos obligatorios: url, userId, title, type",
       });
     }
 
-    // Crear nuevo documento Media
     const newMedia = new Media({
-      mediaUrl: url,       // Según el modelo el campo es mediaUrl
+      mediaUrl: url,
       userId,
       username,
       userPhotoURL,
@@ -62,5 +60,5 @@ router.post("/register", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
 

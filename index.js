@@ -1,3 +1,7 @@
+// =======================
+// Backend completo
+// =======================
+
 // Carga variables de entorno
 import 'dotenv/config';
 import express from 'express';
@@ -8,6 +12,7 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+// Modelos
 import User from './models/User.js';
 import Media from './models/Media.js';
 
@@ -16,12 +21,12 @@ import Media from './models/Media.js';
 // =======================
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://mi-app-frontend-six.vercel.app' // 👈 dominio real del frontend
+  'https://mi-app-frontend-six.vercel.app', // 👈 cambia este por tu frontend real en Vercel
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // permitir Postman o llamadas internas
+    if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -61,12 +66,15 @@ function authMiddleware(req, res, next) {
 // =======================
 app.get('/', async (req, res) => {
   try {
-    const mongoStatus = mongoose.connection.readyState === 1 ? 'Conectada ✅' : 'Desconectada ❌';
-    const cloudStatus = cloudinary.v2.config().cloud_name ? 'Conectado ✅' : 'Desconectado ❌';
+    const mongoStatus =
+      mongoose.connection.readyState === 1 ? 'Conectada ✅' : 'Desconectada ❌';
+    const cloudStatus = cloudinary.v2.config().cloud_name
+      ? 'Conectado ✅'
+      : 'Desconectado ❌';
     const userCount = await User.countDocuments();
     const mediaCount = await Media.countDocuments();
 
-    res.setHeader('Access-Control-Allow-Origin', '*'); // 👈 extra seguridad contra error 308
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.send(`
       <h1>Dashboard Backend</h1>
       <p>MongoDB: ${mongoStatus}</p>
@@ -83,7 +91,8 @@ app.get('/', async (req, res) => {
 // =======================
 // Conexión MongoDB
 // =======================
-mongoose.connect(process.env.MONGODB_URI)
+mongoose
+  .connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Conectado a MongoDB'))
   .catch((err) => console.error('❌ Error MongoDB:', err));
 
@@ -110,10 +119,12 @@ const upload = multer({ storage });
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    if (!username || !email || !password) return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    if (!username || !email || !password)
+      return res.status(400).json({ error: 'Todos los campos son requeridos' });
 
     const userExists = await User.findOne({ $or: [{ username }, { email }] });
-    if (userExists) return res.status(400).json({ error: 'Usuario o email ya existe' });
+    if (userExists)
+      return res.status(400).json({ error: 'Usuario o email ya existe' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ username, email, password: hashedPassword });
@@ -129,7 +140,8 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    if (!email || !password)
+      return res.status(400).json({ error: 'Todos los campos son requeridos' });
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: 'Usuario no encontrado' });
@@ -137,8 +149,15 @@ app.post('/api/auth/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ error: 'Contraseña incorrecta' });
 
-    const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
+    const token = jwt.sign(
+      { id: user._id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.json({
+      token,
+      user: { id: user._id, username: user.username, email: user.email },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -147,6 +166,8 @@ app.post('/api/auth/login', async (req, res) => {
 // =======================
 // Rutas Media
 // =======================
+
+// Subir media
 app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) => {
   try {
     const { title, description, hashtags, type } = req.body;
@@ -158,9 +179,8 @@ app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) =
     const uploadStream = cloudinary.v2.uploader.upload_stream(
       {
         folder: `${username || 'anonymous'}/${type || 'media'}`,
-        upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET,
         resource_type: 'auto',
-        context: { title, description, hashtags }
+        context: { title, description, hashtags },
       },
       async (error, result) => {
         if (error) return res.status(500).json({ error: error.message });
@@ -168,7 +188,9 @@ app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) =
         const media = new Media({
           title,
           description,
-          hashtags: hashtags ? hashtags.split(',').map(h => h.trim()) : [],
+          hashtags: hashtags
+            ? hashtags.split(',').map((h) => h.trim())
+            : [],
           type,
           username,
           mediaUrl: result.secure_url,
@@ -177,7 +199,7 @@ app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) =
           createdAt: new Date(),
           views: 0,
           likes: 0,
-          comments: 0
+          comments: 0,
         });
 
         await media.save();
@@ -186,6 +208,48 @@ app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) =
     );
 
     uploadStream.end(file.buffer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Listar media trending
+app.get('/api/media/trending', async (req, res) => {
+  try {
+    const { orderBy = 'views', limit = 10 } = req.query;
+    const media = await Media.find()
+      .sort({ [orderBy]: -1 })
+      .limit(Number(limit));
+    res.json(media);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Obtener media por id
+app.get('/api/media/:id', async (req, res) => {
+  try {
+    const media = await Media.findById(req.params.id);
+    if (!media) return res.status(404).json({ error: 'Media no encontrada' });
+
+    media.views += 1;
+    await media.save();
+
+    res.json(media);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =======================
+// Rutas User
+// =======================
+
+// Perfil del usuario autenticado
+app.get('/api/users/profile', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

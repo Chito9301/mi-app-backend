@@ -16,8 +16,9 @@ import Media from './models/Media.js';
 // =======================
 const allowedOrigins = [
   'http://localhost:3000',
-  process.env.NEXT_PUBLIC_API_URL
+  'https://mi-app-frontend-six.vercel.app' // 👈 aquí pones la URL real de tu frontend
 ];
+
 
 const corsOptions = {
   origin: (origin, callback) => {

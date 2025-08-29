@@ -1,6 +1,5 @@
 // Carga variables de entorno
 import 'dotenv/config';
-
 import express from 'express';
 import mongoose from 'mongoose';
 import multer from 'multer';
@@ -17,7 +16,7 @@ import Media from './models/Media.js';
 // =======================
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://mi-app-frontend.vercel.app', // 👈 cambia este al dominio real de tu frontend
+  process.env.NEXT_PUBLIC_API_URL
 ];
 
 const corsOptions = {
@@ -61,7 +60,6 @@ app.get('/', async (req, res) => {
   try {
     const mongoStatus = mongoose.connection.readyState === 1 ? 'Conectada ✅' : 'Desconectada ❌';
     const cloudStatus = cloudinary.v2.config().cloud_name ? 'Conectado ✅' : 'Desconectado ❌';
-
     const userCount = await User.countDocuments();
     const mediaCount = await Media.countDocuments();
 
@@ -69,6 +67,7 @@ app.get('/', async (req, res) => {
       <h1>Dashboard Backend</h1>
       <p>MongoDB: ${mongoStatus}</p>
       <p>Cloudinary: ${cloudStatus}</p>
+      <p>Frontend URL: ${process.env.NEXT_PUBLIC_API_URL}</p>
       <p>Usuarios: ${userCount}</p>
       <p>Medias: ${mediaCount}</p>
     `);

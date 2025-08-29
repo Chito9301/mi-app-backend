@@ -9,8 +9,16 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "index.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+      "dest": "index.js"
     }
-  ]
+  ],
+  "env": {
+    "MONGODB_URI": "@mongodb_uri",
+    "JWT_SECRET": "@jwt_secret",
+    "NEXT_PUBLIC_API_URL": "@next_public_api_url",
+    "CLOUDINARY_UPLOAD_PRESET": "@cloudinary_upload_preset",
+    "CLOUDINARY_API_KEY": "@cloudinary_api_key",
+    "CLOUDINARY_CLOUD_NAME": "@cloudinary_cloud_name",
+    "CLOUDINARY_API_SECRET": "@cloudinary_api_secret"
+  }
 }

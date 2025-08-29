@@ -21,13 +21,16 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // permitir postman, curl, etc.
-    if (allowedOrigins.includes(origin)) callback(null, true);
-    else callback(new Error(`CORS: El origen ${origin} no está permitido.`));
+    if (!origin) return callback(null, true); // permitir Postman o llamadas internas
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: El origen ${origin} no está permitido.`));
+    }
   },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
   optionsSuccessStatus: 200,
 };
 
@@ -63,6 +66,7 @@ app.get('/', async (req, res) => {
     const userCount = await User.countDocuments();
     const mediaCount = await Media.countDocuments();
 
+    res.setHeader('Access-Control-Allow-Origin', '*'); // 👈 extra seguridad contra error 308
     res.send(`
       <h1>Dashboard Backend</h1>
       <p>MongoDB: ${mongoStatus}</p>

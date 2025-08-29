@@ -16,20 +16,19 @@ import Media from './models/Media.js';
 // =======================
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://mi-app-frontend-six.vercel.app' // 👈 aquí pones la URL real de tu frontend
+  'https://mi-app-frontend-six.vercel.app' // 👈 dominio real del frontend
 ];
-
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
+    if (!origin) return callback(null, true); // permitir postman, curl, etc.
     if (allowedOrigins.includes(origin)) callback(null, true);
     else callback(new Error(`CORS: El origen ${origin} no está permitido.`));
   },
-  optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
+  optionsSuccessStatus: 200,
 };
 
 // =======================

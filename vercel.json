@@ -1,24 +1,16 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "index.js",
-      "use": "@vercel/node"
+  "functions": {
+    "index.js": {
+      "runtime": "nodejs20.x"
     }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "index.js"
-    }
-  ],
+  },
   "env": {
     "MONGODB_URI": "@mongodb_uri",
     "JWT_SECRET": "@jwt_secret",
-    "NEXT_PUBLIC_API_URL": "@next_public_api_url",
-    "CLOUDINARY_UPLOAD_PRESET": "@cloudinary_upload_preset",
+    "NEXT_PUBLIC_API_URL": "@next_public_url",
+    "CLOUDINARY_UPLOAD_PRESET": "@cloudinary_preset",
     "CLOUDINARY_API_KEY": "@cloudinary_api_key",
-    "CLOUDINARY_CLOUD_NAME": "@cloudinary_cloud_name",
-    "CLOUDINARY_API_SECRET": "@cloudinary_api_secret"
+    "CLOUDINARY_CLOUD_NAME": "@cloudinary_cloud",
+    "CLOUDINARY_SECRET": "@cloudinary_secret"
   }
 }

@@ -11,6 +11,7 @@ import cloudinary from 'cloudinary';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import path from 'path';
 
 // Modelos
 import User from './models/User.js';
@@ -21,11 +22,12 @@ import Media from './models/Media.js';
 // =======================
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://mi-app-frontend-six.vercel.app', // 👈 cambia este por tu frontend real en Vercel
+  'https://mi-app-frontend-six.vercel.app', // 👈 ajusta si usas otra URL
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
+    // permitir herramientas sin origen (Postman, curl) y orígenes listados
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -45,6 +47,31 @@ const corsOptions = {
 const app = express();
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// =======================
+// Servir dashboard estático (UI) - opcional
+// =======================
+// NOTA: crea la carpeta `dashboard` en la raíz del backend con index.html y styles.css
+const dashboardDir = path.join(process.cwd(), 'dashboard');
+app.use('/dashboard-assets', express.static(dashboardDir)); // sirve archivos estáticos
+app.get('/dashboard', (req, res) => {
+  return res.sendFile(path.join(dashboardDir, 'index.html'), (err) => {
+    if (err) {
+      console.error('Error sirviendo dashboard:', err);
+      res.status(500).send('Error cargando dashboard');
+    }
+  });
+});
+
+// Raíz: pequeña página guía (no modifica APIs)
+app.get('/', (req, res) => {
+  res.send(
+    `<h2>Backend activo</h2>
+     <p>UI Dashboard: <a href="/dashboard">/dashboard</a></p>
+     <p>API status JSON: <a href="/api/status">/api/status</a></p>`
+  );
+});
 
 // =======================
 // Middleware autenticación JWT
@@ -62,29 +89,28 @@ function authMiddleware(req, res, next) {
 }
 
 // =======================
-// Dashboard / test server
+// Endpoint API de estado (dashboard programático)
 // =======================
-app.get('/', async (req, res) => {
+app.get('/api/status', async (req, res) => {
   try {
     const mongoStatus =
       mongoose.connection.readyState === 1 ? 'Conectada ✅' : 'Desconectada ❌';
-    const cloudStatus = cloudinary.v2.config().cloud_name
+    const cloudStatus = cloudinary.v2 && cloudinary.v2.config().cloud_name
       ? 'Conectado ✅'
       : 'Desconectado ❌';
     const userCount = await User.countDocuments();
     const mediaCount = await Media.countDocuments();
 
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.send(`
-      <h1>Dashboard Backend</h1>
-      <p>MongoDB: ${mongoStatus}</p>
-      <p>Cloudinary: ${cloudStatus}</p>
-      <p>Frontend URL: ${process.env.NEXT_PUBLIC_API_URL}</p>
-      <p>Usuarios: ${userCount}</p>
-      <p>Medias: ${mediaCount}</p>
-    `);
+    res.json({
+      message: '🚀 Backend funcionando correctamente',
+      mongoDB: mongoStatus,
+      cloudinary: cloudStatus,
+      frontendUrl: process.env.NEXT_PUBLIC_API_URL,
+      stats: { usuarios: userCount, medias: mediaCount },
+    });
   } catch (err) {
-    res.status(500).send('Error cargando dashboard');
+    console.error('Error en /api/status:', err);
+    res.status(500).json({ error: 'Error cargando dashboard' });
   }
 });
 
@@ -106,16 +132,15 @@ cloudinary.v2.config({
 });
 
 // =======================
-// Configurar multer
+// Configurar multer (para uploads)
 // =======================
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // =======================
-// Rutas Auth
+// Rutas Auth (register + login)
 // =======================
 
-// Registro
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -132,11 +157,11 @@ app.post('/api/auth/register', async (req, res) => {
 
     res.status(201).json({ message: 'Usuario registrado correctamente' });
   } catch (err) {
+    console.error('Error en /api/auth/register:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Login
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -159,15 +184,15 @@ app.post('/api/auth/login', async (req, res) => {
       user: { id: user._id, username: user.username, email: user.email },
     });
   } catch (err) {
+    console.error('Error en /api/auth/login:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // =======================
-// Rutas Media
+// Rutas Media (upload, trending, getById)
 // =======================
 
-// Subir media
 app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) => {
   try {
     const { title, description, hashtags, type } = req.body;
@@ -183,14 +208,15 @@ app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) =
         context: { title, description, hashtags },
       },
       async (error, result) => {
-        if (error) return res.status(500).json({ error: error.message });
+        if (error) {
+          console.error('Cloudinary upload error:', error);
+          return res.status(500).json({ error: error.message });
+        }
 
         const media = new Media({
           title,
           description,
-          hashtags: hashtags
-            ? hashtags.split(',').map((h) => h.trim())
-            : [],
+          hashtags: hashtags ? hashtags.split(',').map((h) => h.trim()) : [],
           type,
           username,
           mediaUrl: result.secure_url,
@@ -209,24 +235,22 @@ app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) =
 
     uploadStream.end(file.buffer);
   } catch (err) {
+    console.error('Error en /api/media POST:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Listar media trending
 app.get('/api/media/trending', async (req, res) => {
   try {
     const { orderBy = 'views', limit = 10 } = req.query;
-    const media = await Media.find()
-      .sort({ [orderBy]: -1 })
-      .limit(Number(limit));
+    const media = await Media.find().sort({ [orderBy]: -1 }).limit(Number(limit));
     res.json(media);
   } catch (err) {
+    console.error('Error en /api/media/trending:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Obtener media por id
 app.get('/api/media/:id', async (req, res) => {
   try {
     const media = await Media.findById(req.params.id);
@@ -237,6 +261,7 @@ app.get('/api/media/:id', async (req, res) => {
 
     res.json(media);
   } catch (err) {
+    console.error('Error en /api/media/:id:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -245,14 +270,19 @@ app.get('/api/media/:id', async (req, res) => {
 // Rutas User
 // =======================
 
-// Perfil del usuario autenticado
 app.get('/api/users/profile', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
     res.json(user);
   } catch (err) {
+    console.error('Error en /api/users/profile:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// Manejo de rutas inválidas
+app.use((req, res) => {
+  res.status(404).json({ error: 'Ruta no encontrada' });
 });
 
 // =======================

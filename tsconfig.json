@@ -8,20 +8,10 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": [
-      "node",
-      "@vercel/node"
-    ],
+    "types": ["node", "@vercel/node"],
     "outDir": "./dist",
     "rootDir": "./"
   },
-  "include": [
-    "api/**/*.ts",
-    "models/**/*.ts",
-    "lib/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["api/**/*.ts", "models/**/*.ts", "lib/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

@@ -1,8 +1,8 @@
 // controllers/userControllers.js
 
-const User = require('../models/User'); // Modelo de usuario
-const bcrypt = require('bcryptjs'); // Para encriptar contraseñas
-const jwt = require('jsonwebtoken'); // Para generar tokens
+const User = require("../models/User"); // Modelo de usuario
+const bcrypt = require("bcryptjs"); // Para encriptar contraseñas
+const jwt = require("jsonwebtoken"); // Para generar tokens
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey"; // 🔑 cambiar en producción
 
@@ -11,11 +11,14 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey"; // 🔑 cambiar e
  */
 async function getAllUsers(req, res) {
   try {
-    const users = await User.find({}, 'username email photoURL role createdAt updatedAt').lean();
+    const users = await User.find(
+      {},
+      "username email photoURL role createdAt updatedAt",
+    ).lean();
     return res.status(200).json({ users });
   } catch (error) {
-    console.error('Error obteniendo usuarios:', error);
-    return res.status(500).json({ error: 'Error obteniendo usuarios' });
+    console.error("Error obteniendo usuarios:", error);
+    return res.status(500).json({ error: "Error obteniendo usuarios" });
   }
 }
 
@@ -25,16 +28,19 @@ async function getAllUsers(req, res) {
 async function getUserById(req, res) {
   try {
     const { id } = req.params;
-    const user = await User.findById(id, 'username email photoURL role createdAt updatedAt').lean();
+    const user = await User.findById(
+      id,
+      "username email photoURL role createdAt updatedAt",
+    ).lean();
 
     if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+      return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
     return res.status(200).json({ user });
   } catch (error) {
-    console.error('Error obteniendo usuario:', error);
-    return res.status(500).json({ error: 'Error obteniendo usuario' });
+    console.error("Error obteniendo usuario:", error);
+    return res.status(500).json({ error: "Error obteniendo usuario" });
   }
 }
 
@@ -63,7 +69,7 @@ async function registerUser(req, res) {
     const newUser = new User({
       username,
       email,
-      password: hashedPassword
+      password: hashedPassword,
     });
 
     await newUser.save();
@@ -72,7 +78,7 @@ async function registerUser(req, res) {
     const token = jwt.sign(
       { id: newUser._id, username: newUser.username },
       JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     return res.status(201).json({
@@ -81,8 +87,8 @@ async function registerUser(req, res) {
       user: {
         id: newUser._id,
         username: newUser.username,
-        email: newUser.email
-      }
+        email: newUser.email,
+      },
     });
   } catch (error) {
     console.error("Error registrando usuario:", error);
@@ -99,7 +105,9 @@ async function loginUser(req, res) {
 
     // Validar input
     if (!email || !password) {
-      return res.status(400).json({ error: "Email y contraseña son requeridos" });
+      return res
+        .status(400)
+        .json({ error: "Email y contraseña son requeridos" });
     }
 
     // Buscar usuario
@@ -118,7 +126,7 @@ async function loginUser(req, res) {
     const token = jwt.sign(
       { id: user._id, username: user.username },
       JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     return res.status(200).json({
@@ -127,8 +135,8 @@ async function loginUser(req, res) {
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
   } catch (error) {
     console.error("Error en login:", error);
@@ -140,5 +148,5 @@ module.exports = {
   getAllUsers,
   getUserById,
   registerUser,
-  loginUser
+  loginUser,
 };

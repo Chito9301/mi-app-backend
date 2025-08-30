@@ -17,7 +17,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let userId: string;
   if (typeof user._id === "string") {
     userId = user._id;
-  } else if (typeof user._id === "object" && user._id !== null && "toString" in user._id) {
+  } else if (
+    typeof user._id === "object" &&
+    user._id !== null &&
+    "toString" in user._id
+  ) {
     userId = user._id.toString();
   } else {
     return sendJSON(res, 500, { error: "ID de usuario inválido" });

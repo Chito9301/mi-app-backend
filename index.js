@@ -1,6 +1,6 @@
-// =======================
+// c3cf65c (Corrige conflictos y formatea backend con Prettier)
 // Backend completo
-// =======================
+//
 
 // Carga variables de entorno
 import 'dotenv/config';
@@ -24,7 +24,6 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://mi-app-frontend-six.vercel.app', // 👈 ajusta si usas otra URL
 ];
-
 const corsOptions = {
   origin: (origin, callback) => {
     // permitir herramientas sin origen (Postman, curl) y orígenes listados
@@ -80,7 +79,6 @@ function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Token requerido' });
-
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) return res.status(403).json({ error: 'Token inválido' });
     req.user = user;
@@ -100,7 +98,6 @@ app.get('/api/status', async (req, res) => {
       : 'Desconectado ❌';
     const userCount = await User.countDocuments();
     const mediaCount = await Media.countDocuments();
-
     res.json({
       message: '🚀 Backend funcionando correctamente',
       mongoDB: mongoStatus,
@@ -139,22 +136,18 @@ const upload = multer({ storage });
 
 // =======================
 // Rutas Auth (register + login)
-// =======================
-
+// c3cf65c (Corrige conflictos y formatea backend con Prettier)
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
     if (!username || !email || !password)
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
-
     const userExists = await User.findOne({ $or: [{ username }, { email }] });
     if (userExists)
       return res.status(400).json({ error: 'Usuario o email ya existe' });
-
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ username, email, password: hashedPassword });
     await user.save();
-
     res.status(201).json({ message: 'Usuario registrado correctamente' });
   } catch (err) {
     console.error('Error en /api/auth/register:', err);
@@ -167,13 +160,10 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password)
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
-
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: 'Usuario no encontrado' });
-
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ error: 'Contraseña incorrecta' });
-
     const token = jwt.sign(
       { id: user._id, username: user.username },
       process.env.JWT_SECRET,
@@ -191,16 +181,13 @@ app.post('/api/auth/login', async (req, res) => {
 
 // =======================
 // Rutas Media (upload, trending, getById)
-// =======================
-
+// c3cf65c (Corrige conflictos y formatea backend con Prettier)
 app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) => {
   try {
     const { title, description, hashtags, type } = req.body;
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
-
     const username = req.user.username;
-
     const uploadStream = cloudinary.v2.uploader.upload_stream(
       {
         folder: `${username || 'anonymous'}/${type || 'media'}`,
@@ -212,7 +199,7 @@ app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) =
           console.error('Cloudinary upload error:', error);
           return res.status(500).json({ error: error.message });
         }
-
+//c3cf65c (Corrige conflictos y formatea backend con Prettier)
         const media = new Media({
           title,
           description,
@@ -227,12 +214,10 @@ app.post('/api/media', authMiddleware, upload.single('file'), async (req, res) =
           likes: 0,
           comments: 0,
         });
-
         await media.save();
         res.json(media);
       }
     );
-
     uploadStream.end(file.buffer);
   } catch (err) {
     console.error('Error en /api/media POST:', err);
@@ -255,10 +240,8 @@ app.get('/api/media/:id', async (req, res) => {
   try {
     const media = await Media.findById(req.params.id);
     if (!media) return res.status(404).json({ error: 'Media no encontrada' });
-
     media.views += 1;
     await media.save();
-
     res.json(media);
   } catch (err) {
     console.error('Error en /api/media/:id:', err);
@@ -268,8 +251,7 @@ app.get('/api/media/:id', async (req, res) => {
 
 // =======================
 // Rutas User
-// =======================
-
+// c3cf65c (Corrige conflictos y formatea backend con Prettier)
 app.get('/api/users/profile', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');

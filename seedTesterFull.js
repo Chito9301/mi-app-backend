@@ -1,18 +1,19 @@
 // seedTesterFull.js
-require('dotenv').config();
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('./models/User'); // Ajusta la ruta a tu modelo
+require("dotenv").config();
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("./models/User"); // Ajusta la ruta a tu modelo
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('Conectado a MongoDB'))
-.catch(err => console.error('Error conectando a MongoDB:', err));
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("Conectado a MongoDB"))
+  .catch((err) => console.error("Error conectando a MongoDB:", err));
 
 async function seedTester() {
   try {
@@ -28,18 +29,16 @@ async function seedTester() {
       user = new User({
         username: "tester01",
         email: "tester01@example.com",
-        password: hashedPassword
+        password: hashedPassword,
       });
       await user.save();
       console.log("Usuario tester creado con éxito!");
     }
 
     // Generar JWT de prueba
-    const token = jwt.sign(
-      { id: user._id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     console.log("\n==== Usuario Tester ====");
     console.log("Email: tester01@example.com");
